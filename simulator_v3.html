@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>סימולטור סיווג מאגר מידע</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Assistant:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1C2430;
+    --ink-soft:#4A5262;
+    --paper:#F6F4EE;
+    --paper-2:#EEEAE0;
+    --line:#D3CCBB;
+    --line-strong:#B7AF98;
+    --teal:#0E5C56;
+    --teal-dark:#0A423E;
+    --teal-pale:#DCEAE7;
+    --basic:#4C7A63;
+    --basic-pale:#E4EEE7;
+    --medium:#A9762C;
+    --medium-pale:#F3E7D2;
+    --high:#8C3B34;
+    --high-pale:#F1DEDA;
+    --exempt:#5B6B82;
+    --exempt-pale:#E4E8EE;
+    --danger:#9A3B36;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Assistant',sans-serif;
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{
+    font-family:'Frank Ruhl Libre',serif;
+    color:var(--ink);
+    margin:0 0 .4em 0;
+    font-weight:700;
+  }
+  .app{max-width:720px;margin:0 auto;padding:0 20px 80px;}
+
+  .masthead{padding:34px 0 20px;border-bottom:1px solid var(--line-strong);margin-bottom:28px;}
+  .masthead .kicker{font-size:14px;color:var(--teal-dark);font-weight:600;margin-bottom:6px;}
+  .masthead h1{font-size:30px;letter-spacing:.2px;}
+  .masthead p{color:var(--ink-soft);font-size:15px;margin:6px 0 0;max-width:56ch;}
+
+  .progress-wrap{margin:0 0 34px;}
+  .progress-track{position:relative;display:flex;justify-content:space-between;margin-bottom:6px;}
+  .progress-track::before{content:"";position:absolute;top:6px;right:6px;left:6px;height:1px;background:var(--line-strong);z-index:0;}
+  .p-node{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;width:24%;font-size:12px;color:var(--ink-soft);text-align:center;}
+  .p-dot{width:13px;height:13px;border-radius:50%;background:var(--paper);border:1.5px solid var(--line-strong);}
+  .p-node.done .p-dot{background:var(--teal);border-color:var(--teal);}
+  .p-node.current .p-dot{background:var(--paper);border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-pale);}
+  .p-node.current span{color:var(--teal-dark);font-weight:700;}
+  .p-node.done span{color:var(--ink);}
+
+  .stage{margin-bottom:8px;}
+  .stage-title{font-size:13px;color:var(--teal-dark);font-weight:700;margin-bottom:2px;}
+  .stage h2{font-size:23px;margin-bottom:4px;}
+  .stage .stage-desc{color:var(--ink-soft);font-size:14.5px;margin-bottom:26px;}
+
+  .q{padding:22px 0;border-top:1px solid var(--line);}
+  .q:first-of-type{border-top:none;}
+  .q-label{font-size:16.5px;font-weight:600;margin-bottom:4px;}
+  .q-help{font-size:13.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.55;}
+  .q-required::after{content:" *";color:var(--danger);}
+
+  /* option rows (owner type, yes/no) with help icon */
+  .opt-row-wrap{margin-bottom:8px;}
+  .opt-row{
+    display:flex;align-items:stretch;
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    background:#fff;
+    transition:border-color .12s, background .12s;
+  }
+  .opt-row.selected{border-color:var(--teal);background:var(--teal-pale);}
+  .opt-select{
+    flex:1;text-align:right;background:transparent;border:none;
+    padding:13px 14px;font-family:inherit;font-size:15px;color:var(--ink);cursor:pointer;
+  }
+  .opt-row.selected .opt-select{color:var(--teal-dark);font-weight:600;}
+  .help-btn{
+    flex:none;width:26px;height:26px;border-radius:50%;
+    border:1px solid var(--line-strong);background:var(--paper-2);
+    color:var(--ink-soft);font-size:12.5px;font-weight:700;font-family:inherit;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;margin:auto 12px;padding:0;flex-shrink:0;
+  }
+  .help-btn:hover{border-color:var(--teal);color:var(--teal-dark);background:#fff;}
+  .help-btn[aria-expanded="true"]{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .help-panel{
+    display:none;font-size:13.5px;color:var(--ink-soft);
+    background:var(--paper-2);border:1px solid var(--line-strong);border-top:none;
+    padding:12px 14px 14px;line-height:1.65;border-bottom-left-radius:var(--radius);border-bottom-right-radius:var(--radius);
+    margin-top:-1px;
+  }
+  .help-panel.show{display:block;}
+
+  .checks{display:flex;flex-direction:column;gap:0;}
+  .check-row{
+    display:flex;align-items:flex-start;gap:10px;
+    padding:10px 0;border-top:1px solid var(--line);
+  }
+  .check-row:first-child{border-top:none;}
+  .check-row input{margin-top:4px;accent-color:var(--teal);width:16px;height:16px;flex:none;cursor:pointer;}
+  .check-row .ct-title{font-weight:600;font-size:15px;}
+  .check-row .ct-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .check-row label.ct-body{flex:1;cursor:pointer;}
+  .check-row .help-btn{margin:2px 0 0;}
+  .check-help-panel{
+    display:none;font-size:13.5px;color:var(--ink-soft);
+    background:var(--paper-2);border-right:2px solid var(--line-strong);
+    padding:10px 12px;margin:0 0 4px 26px;line-height:1.65;
+  }
+  .check-help-panel.show{display:block;}
+
+  input[type=number]{width:100%;max-width:280px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:var(--radius);font-family:inherit;font-size:15px;background:#fff;color:var(--ink);}
+  input:focus, .opt-select:focus-visible, .help-btn:focus-visible, button:focus-visible{outline:2px solid var(--teal);outline-offset:1px;}
+
+  .hint-box{margin-top:10px;font-size:13px;color:var(--ink-soft);background:var(--paper-2);border-right:2px solid var(--line-strong);padding:8px 12px;}
+
+  .error-box{background:var(--high-pale);border-right:3px solid var(--danger);color:#5c221e;padding:12px 14px;font-size:14px;border-radius:var(--radius);margin:14px 0;}
+
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:36px;padding-top:20px;border-top:1px solid var(--line-strong);}
+  .btn{font-family:inherit;font-size:15px;font-weight:600;padding:11px 22px;border-radius:var(--radius);border:1px solid var(--teal);background:var(--teal);color:#fff;cursor:pointer;}
+  .btn:hover{background:var(--teal-dark);border-color:var(--teal-dark);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.secondary{background:#fff;color:var(--teal-dark);}
+  .btn.secondary:hover{background:var(--teal-pale);}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-soft);padding:11px 8px;}
+  .btn.ghost:hover{color:var(--ink);text-decoration:underline;}
+  .btn.danger-ghost{background:transparent;border-color:transparent;color:var(--danger);}
+
+  .intro-card{padding:10px 0 30px;}
+  .intro-card .lede{font-size:16.5px;color:var(--ink-soft);max-width:58ch;margin-bottom:22px;}
+  .intro-meta{display:flex;gap:26px;flex-wrap:wrap;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:26px;font-size:13.5px;color:var(--ink-soft);}
+  .intro-meta b{color:var(--ink);display:block;font-size:14.5px;margin-bottom:2px;}
+
+  .result-badge{display:inline-block;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:14px;}
+  .result-level{font-family:'Frank Ruhl Libre',serif;font-size:42px;font-weight:900;margin:2px 0 6px;}
+  .level-basic{color:var(--basic);} .level-medium{color:var(--medium);} .level-high{color:var(--high);} .level-exempt{color:var(--exempt);}
+  .badge-basic{background:var(--basic-pale);color:#2c4739;}
+  .badge-medium{background:var(--medium-pale);color:#6b4d1c;}
+  .badge-high{background:var(--high-pale);color:#5c221e;}
+  .badge-exempt{background:var(--exempt-pale);color:#39445a;}
+
+  .confidence-row{font-size:14.5px;color:var(--ink-soft);margin-bottom:30px;}
+  .confidence-row b{color:var(--ink);}
+
+  table.reason-tbl{width:100%;border-collapse:collapse;margin:14px 0 26px;font-size:14.5px;}
+  table.reason-tbl th{text-align:right;font-weight:700;font-size:12.5px;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--line-strong);}
+  table.reason-tbl td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .effect-tag{font-size:12px;font-weight:700;padding:2px 9px;border-radius:12px;white-space:nowrap;}
+  .effect-strict{background:var(--high-pale);color:#5c221e;}
+  .effect-neutral{background:var(--paper-2);color:var(--ink-soft);}
+
+  .decider-box{background:var(--paper-2);border-right:3px solid var(--teal);padding:16px 18px;margin:22px 0 30px;border-radius:var(--radius);}
+  .decider-box .lbl{font-size:12.5px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
+  .decider-box p{margin:0;font-size:15px;}
+
+  .missing-box{background:var(--high-pale);border-right:3px solid var(--danger);padding:18px 20px;margin:20px 0;border-radius:var(--radius);}
+  .missing-box h3{color:#5c221e;font-size:17px;margin-bottom:10px;}
+  .missing-box ol{margin:0;padding-inline-start:20px;}
+  .missing-box li{margin-bottom:8px;font-size:14.5px;}
+  .missing-box li b{display:block;}
+  .missing-box li span{color:#6b3733;font-size:13px;}
+
+  .legal-cite{font-size:12.5px;color:var(--ink-soft);background:var(--paper-2);padding:10px 13px;border-radius:var(--radius);margin-top:8px;}
+  .legal-cite b{color:var(--ink);}
+
+  .section-divider{margin:38px 0 20px;padding-top:8px;border-top:1px solid var(--line-strong);}
+  .section-divider h3{font-size:18px;}
+
+  .result-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px;}
+
+  .disclaimer{font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);margin-top:50px;padding-top:16px;line-height:1.7;}
+
+  .report{display:none;}
+  .report.show{display:block;}
+  .report h2{font-size:26px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:4px;}
+  .report .report-sub{color:var(--ink-soft);font-size:13.5px;margin-bottom:30px;}
+  .rsec{margin-bottom:26px;}
+  .rsec h4{font-size:13px;letter-spacing:.3px;color:var(--teal-dark);border-bottom:1px solid var(--line-strong);padding-bottom:6px;margin-bottom:10px;}
+  .rsec p, .rsec li{font-size:14.5px;}
+  .rsec ul{margin:6px 0;padding-inline-start:20px;}
+
+  @media print{
+    body{background:#fff;}
+    .no-print, .masthead .btn, .progress-wrap{display:none !important;}
+    .app{max-width:100%;padding:0 6mm;}
+    .report{display:block !important;}
+    #screen-questions,#screen-result,#screen-intro{display:none !important;}
+  }
+
+  @media (max-width:600px){
+    .masthead h1{font-size:24px;}
+    .result-level{font-size:32px;}
+    .p-node span{display:none;}
+    table.reason-tbl{font-size:13px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="masthead no-print">
+    <div class="kicker">כלי GRC · פרטיות ואבטחת מידע</div>
+    <h1>סימולטור סיווג מאגר מידע</h1>
+    <p>קביעת רמת האבטחה הנדרשת למאגר מידע, בהתאם לתקנות הגנת הפרטיות (אבטחת מידע), התשע״ז-2017. לחצו על סימן ה-<b>?</b> ליד כל בחירה להסבר מורחב.</p>
+  </div>
+
+  <div id="screen-intro">
+    <div class="intro-card">
+      <p class="lede">ארבע שאלות בלבד — כל אחת מהן קריטריון מסווג בתקנות. בסיום תוצג רמת האבטחה הנדרשת, הנימוק המשפטי המדויק, ורמת הוודאות של הקביעה.</p>
+      <div class="intro-meta">
+        <div><b>למי מיועד</b>מבקרי מערכות מידע, CISO, ממוני פרטיות, יועצים משפטיים</div>
+        <div><b>בסיס משפטי</b>תקנות הגנת הפרטיות (אבטחת מידע), התשע״ז-2017</div>
+      </div>
+      <button class="btn" onclick="App.start()">התחלת סיווג</button>
+      <button class="btn ghost" onclick="App.loadDemo()">טעינת תרחיש הדגמה — מאגר עובדים</button>
+    </div>
+  </div>
+
+  <div id="screen-questions" style="display:none">
+    <div class="progress-wrap no-print">
+      <div class="progress-track" id="progress-track"></div>
+    </div>
+    <div id="stage-container"></div>
+    <div class="nav-row no-print">
+      <button class="btn secondary" id="btn-prev" onclick="App.prev()">הקודם</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn ghost danger-ghost" onclick="App.reset()">אפס סימולציה</button>
+        <button class="btn" id="btn-next" onclick="App.next()">הבא</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-result" style="display:none"></div>
+
+  <div class="report" id="screen-report"></div>
+
+  <div class="disclaimer no-print">
+    הסימולטור מבוסס על לשון תקנות הגנת הפרטיות (אבטחת מידע), התשע״ז-2017 (תקנה 1, התוספת הראשונה והתוספת השנייה), כפי שאומתה בעת בניית הכלי. מיועד לתמיכת החלטה בלבד, אינו ייעוץ משפטי ואינו תחליף לבדיקה פרטנית וליעוץ משפטי מוסמך. ייתכנו תיקוני חקיקה או פרשנויות רגולטוריות מאוחרות (לרבות תיקון 13 לחוק הגנת הפרטיות) שאינם משתקפים בכלי.
+    <p style="color:var(--danger);font-weight:700;margin-top:12px;">אין להסתמך על מחשבון זה בלי לקבל ייעוץ משפטי פרטני. לשאלת הגדרת מאגר המידע עשויים להיות השלכות משפטיות משמעותיות, לרבות קנסות במיליוני שקלים.</p>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   LEGAL BASIS (verified against the published regulation text):
+   תקנות הגנת הפרטיות (אבטחת מידע), התשע"ז-2017, כפי שתוקנה בעקבותיה
+   ההגדרה בחוק (ר' הערת תיקון 13 בהמשך)
+   - תקנה 1: 3 רמות אבטחה — בסיסית / בינונית / גבוהה, נגזרות מהתוספת
+     הראשונה והשנייה. "מאגר המנוהל בידי יחיד" הוא מקרה פרטי המסתכם
+     ברמת אבטחה בסיסית.
+   - תוספת ראשונה (רמת אבטחה בינונית):
+       1(1) מטרתו העיקרית איסוף מידע לצורך מסירתו לאחר כדרך עיסוק,
+            לרבות שירותי דיוור ישיר
+       1(3)(א) מאגר המעבד "מידע בעל רגישות מיוחדת" — רשימה סגורה
+            (ראו תיקון 13 להלן)
+       1(4) מאגר בבעלות גוף ציבורי (סעיף 23 לחוק), גם אם אינו עונה על
+            1(1) או 1(3)
+   - תוספת שנייה (רמת אבטחה גבוהה) — מאגר מסוג 1(1) או 1(3) בלבד, ובנוסף
+     100,000 נושאי מידע ומעלה, או יותר מ-100 בעלי הרשאה. מאגר של גוף
+     ציבורי גרידא (1(4) בלבד) אינו מגיע לרמה הגבוהה מכוח היקפו בלבד.
+   - "מאגר המנוהל בידי יחיד" — יחיד/תאגיד בבעלותו, עד 3 בעלי הרשאה בסך
+     הכל, לא לצורך מסירת מידע לאחר, ואינו כולל מידע הכפוף לחובת סודיות
+     מקצועית.
+
+   *** עדכון חשוב — תיקון 13 לחוק הגנת הפרטיות, התשפ"ד-2024 ***
+   תיקון 13 (שנכנס לתוקף באוגוסט 2025) החליף את המונח "מידע רגיש" במונח
+   "מידע בעל רגישות מיוחדת" (סעיף 3 לחוק), והרחיב משמעותית את רשימת
+   סוגי המידע הנכללים בו. פרט 1(3)(א) לתוספת הראשונה לתקנות אבטחת
+   המידע מפנה כיום להגדרה המעודכנת הזו. הגרסה הקודמת של כלי זה הסתמכה
+   על הרשימה הישנה (טרם התיקון) ולכן פספסה קטגוריות שנוספו: צנעת חיי
+   המשפחה, נטייה מינית, נתוני מיקום ותעבורה, מוצא, הערכת אישיות, ומידע
+   הכפוף לחובת סודיות שנקבעה בדין (שהיה מסומן קודם כלא-מכריע — כעת הוא
+   חלק מההגדרה עצמה). הרשימה עודכנה בהתאם. "מידע על קטינים" נותר לתיעוד
+   בלבד — לא אותר כקטגוריה עצמאית בהגדרה המעודכנת.
+   ========================================================================= */
+
+const LEGAL = {
+  reg1: 'תקנה 1 לתקנות הגנת הפרטיות (אבטחת מידע), התשע"ז-2017 — הגדרת שלוש רמות האבטחה',
+  add1_1: 'תוספת ראשונה, פרט 1(1) — מאגר שמטרתו העיקרית איסוף מידע לצורך מסירתו לאחר כדרך עיסוק, לרבות שירותי דיוור ישיר',
+  add1_3: 'תוספת ראשונה, פרט 1(3)(א) — מאגר המעבד "מידע בעל רגישות מיוחדת" כהגדרתו בסעיף 3 לחוק הגנת הפרטיות (כנוסחו לאחר תיקון 13, התשפ"ד-2024)',
+  add1_4: 'תוספת ראשונה, פרט 1(4) — מאגר בבעלות גוף ציבורי כמשמעותו בסעיף 23 לחוק',
+  add2: 'תוספת שנייה — מאגר מסוג 1(1) או 1(3) שיש בו מידע על 100,000 בני אדם ומעלה, או שמספר בעלי ההרשאה בו עולה על 100',
+  indiv: 'תקנה 1 — הגדרת "מאגר המנוהל בידי יחיד"',
+  tikun13: 'סעיף 3 לחוק הגנת הפרטיות, התשמ״א-1981, כנוסחו לאחר תיקון מס׳ 13 (התשפ״ד-2024) — הגדרת "מידע בעל רגישות מיוחדת"'
+};
+
+const OWNER_OPTIONS = [
+  {v:'individual', t:'יחיד, או תאגיד בבעלות יחיד',
+    detail:'יחיד או תאגיד שבבעלותו המלאה (ללא שותפים/דירקטוריון חיצוני) — רלוונטי בעיקר לעסקים קטנים, עצמאים או פרילנסרים. אם בנוסף למאגר יש עד שלושה בעלי הרשאה בסך הכל (הבעלים ועד שני נוספים), הוא אינו משמש למסירת מידע לאחר כדרך עיסוק, ואינו כולל מידע הכפוף לחובת סודיות מקצועית — הוא עשוי לחסות תחת ההגדרה "מאגר המנוהל בידי יחיד", הפטורה מרוב החובות שבתקנות.'},
+  {v:'company', t:'חברה / גוף פרטי (שאינו גוף ציבורי)',
+    detail:'כל גוף מסחרי או ארגון שאינו גוף ציבורי — חברה בע״מ, שותפות, עמותה פרטית וכיו״ב, ללא קשר לגודלו. זוהי ברירת המחדל לרוב הארגונים העסקיים, ואינה כשלעצמה מטה את הסיווג — הסיווג ייקבע לפי סוגי המידע, מטרת המאגר והיקפו.'},
+  {v:'public', t:'גוף ציבורי (כמשמעותו בסעיף 23 לחוק הגנת הפרטיות)',
+    detail:'גוף ציבורי כהגדרתו בסעיף 23 לחוק — לרבות משרדי ממשלה, רשויות מקומיות, תאגידים סטטוטוריים וגופים דומים. עצם הבעלות הציבורית, גם ללא מידע רגיש וללא מטרת מסירה לאחר, מטה את המאגר לרמת אבטחה בינונית לפחות (תוספת ראשונה, פרט 1(4)). עם זאת, מאגר כזה אינו מגיע לרמה הגבוהה מכוח היקפו בלבד — אלא אם הוא גם כולל מידע רגיש או משמש למסירה לאחר.'}
+];
+
+const TRANSFER_OPTIONS = [
+  {v:'yes', t:'כן',
+    detail:'מתייחס למאגרים שכל תכליתם היא איסוף מידע אישי לצורך מכירתו/מסירתו לגורמים אחרים — למשל לשכת שירות מידע, חברה המוכרת רשימות לידים, שירות דיוור ישיר, או "ברוקר מידע". זהו קריטריון עצמאי וקובע: אם הוא מתקיים, אין צורך שיתקיים גם קריטריון מידע רגיש כדי להגיע לרמה הבינונית.'},
+  {v:'no', t:'לא',
+    detail:'המאגר משמש למטרה עסקית/ארגונית פנימית (ניהול עובדים, לקוחות, ספקים וכד׳), גם אם מתבצעות ממנו העברות נקודתיות לספקים לצורך מתן השירות עצמו (למשל לשכת שכר חיצונית). במקרה זה קריטריון 1(1) אינו מתקיים, אך המאגר עדיין עשוי להיות ברמה הבינונית מטעמים אחרים — בעלות ציבורית או מידע רגיש.'}
+];
+
+/* decisive = true: חלק מהגדרת "מידע בעל רגישות מיוחדת" (סעיף 3 לחוק,
+   כנוסחו לאחר תיקון 13) שאליה מפנה פרט 1(3)(א) לתוספת הראשונה — מפעיל
+   את רמת האבטחה הבינונית בכוחו העצמאי.
+   decisive = false: לתיעוד/הקשר בלבד — לא אותר ברשימה הסגורה שבהגדרה. */
+const SENSITIVE_TYPES = [
+  {id:'family_privacy', title:'מידע על צנעת חיי המשפחה של אדם', sub:'לרבות צנעת אישותו', decisive:true,
+    detail:'מידע על התחום האינטימי והמשפחתי של אדם — יחסי משפחה, זוגיות וצנעת אישות. קטגוריה ממוקדת יותר מ"צנעת הפרט" הכללית, כפי שנוסחה מחדש בהגדרת "מידע בעל רגישות מיוחדת" שבסעיף 3 לחוק (לאחר תיקון 13). לתשומת לב: סטטוס אישי גרידא ("נשוי", "מספר ילדים") אינו נחשב כשלעצמו למידע מסוג זה לפי פרשנות מקצועית מקובלת — הבחינה היא לפי תוכן ורגישות המידע בפועל.'},
+  {id:'sexual_orientation', title:'מידע על נטייה מינית', sub:'', decisive:true,
+    detail:'מידע על נטייתו המינית של אדם. קטגוריה שנוספה במפורש להגדרת "מידע בעל רגישות מיוחדת" בתיקון 13 לחוק, ואינה הופיעה ברשימת "מידע רגיש" הישנה. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'medical', title:'מידע רפואי', sub:'היסטוריה רפואית, אבחנות, טיפולים', decisive:true,
+    detail:'כל מידע על מצבו הבריאותי הפיזי או הנפשי של אדם — אבחנות, תוצאות בדיקות, טיפולים, תרופות, פניות לגורמי בריאות. נפוץ במאגרי משאבי אנוש (אישורי מחלה, התאמות רפואיות) ובמאגרי ביטוח/בריאות. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'genetic', title:'מידע גנטי', sub:'תוצאות בדיקות גנטיות, נתוני DNA', decisive:true,
+    detail:'מידע שמקורו בבדיקה גנטית או המתאר תכונות תורשתיות — תוצאות רצף DNA, בדיקות סיכון גנטי, מידע גנאלוגי-רפואי. רלוונטי למאגרי מעבדות רפואיות או חברות בדיקות גנטיות צרכניות. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'biometric', title:'מידע ביומטרי (מזהה ביומטרי)', sub:'טביעות אצבע, זיהוי פנים, קול וכיו״ב', decisive:true,
+    detail:'מידע המזהה אדם על בסיס מאפיין פיזיולוגי או התנהגותי ייחודי — טביעת אצבע, סריקת קשתית, זיהוי פנים, דגימת קול. נפוץ במערכות בקרת כניסה, שעוני נוכחות ומנגנוני אימות רב-שלבי. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'political', title:'דעות פוליטיות', sub:'השתייכות, עמדות והשקפות', decisive:true,
+    detail:'דעות פוליטיות והשתייכות מפלגתית. עשוי להופיע במאגרים ארגוניים בעקיפין — למשל דרך סקרים פנים-ארגוניים או פעילות עובדים מתועדת. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'religious', title:'אמונות דתיות', sub:'השתייכות והשקפה דתית', decisive:true,
+    detail:'אמונה ושייכות דתית של אדם. עשוי להופיע במאגרים ארגוניים בעקיפין — למשל בקשות התאמה דתית (כשרות, ימי מנוחה). קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'criminal', title:'מידע פלילי (עבר פלילי)', sub:'הרשעות, כתבי אישום, חקירות', decisive:true,
+    detail:'מידע על עברו הפלילי של אדם — הרשעות, כתבי אישום תלויים ועומדים, חקירות משטרתיות ורישום פלילי. רלוונטי בעיקר למאגרי בדיקות רקע לפני העסקה ולמאגרים רגולטוריים בענפים מפוקחים. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'location_data', title:'נתוני מיקום ותעבורה', sub:'מיקום גיאוגרפי, נתוני ספק סלולרי', decisive:true,
+    detail:'נתונים של ספק תקשורת סלולרית וכן נתונים על אודות מיקומו הגיאוגרפי של אדם, ככל שיש בהם כדי ללמד על מידע בעל רגישות מיוחדת אחר. קטגוריה שנוספה במפורש בתיקון 13 לחוק. רלוונטי לאפליקציות מבוססות מיקום, מערכות ניהול צי רכב, ומעקב עובדים בשטח. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'origin', title:'מידע על מוצאו של אדם', sub:'מוצא אתני/לאומי', decisive:true,
+    detail:'מידע על מוצאו האתני או הלאומי של אדם. קטגוריה שנוספה במפורש להגדרת "מידע בעל רגישות מיוחדת" בתיקון 13 לחוק. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'personality_assessment', title:'הערכת אישיות', sub:'חוות דעת מקצועית, כגון לצורך השמה', decisive:true,
+    detail:'חוות דעת מקצועית המעריכה מאפייני אישיות של אדם — למשל מבחני מיון והשמה, אבחונים ארגוניים. קטגוריה ייחודית לדין הישראלי שנוספה בתיקון 13 לחוק, ואין לה מקבילה ישירה ברוב דיני הפרטיות בעולם. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'salary_financial', title:'נתוני שכר ופעילות פיננסית', sub:'שכר, הכנסות, נכסים, אשראי', decisive:true,
+    detail:'נתוני שכר והכנסות, וכן מידע על פעילות פיננסית — נכסים, חובות, דירוג אשראי, פשיטת רגל, פעילות בנקאית. נפוץ במאגרי משאבי אנוש, בנקאות, ליסינג והשכרת דירות. קריטריון עצמאי מתוספת ראשונה, פרט 1(3)(א).'},
+  {id:'confidential', title:'מידע שחלה עליו חובת סודיות שנקבעה בדין', sub:'למשל: מידע רפואי אצל רופא, מידע משפטי אצל עו״ד', decisive:true,
+    detail:'מידע החוסה תחת חובת סודיות שנקבעה בדין — למשל תיקי לקוחות של עורך דין, רשומות מטופלים של רופא. קטגוריה הנכללת במפורש בהגדרת "מידע בעל רגישות מיוחדת" שבסעיף 3 לחוק (לאחר תיקון 13), ולכן מפעילה כעת בעצמה את הרמה הבינונית — בשונה מגרסה קודמת של כלי זה. קיומו גם שולל את האפשרות לסווג את המאגר כ"מאגר המנוהל בידי יחיד".'},
+  {id:'other_sensitive', title:'מידע רגיש אחר', sub:'שאינו נכלל ברשימה, לפי שיקול דעתכם', decisive:true,
+    detail:'כל סוג מידע נוסף שלדעתכם המקצועית עשוי להיחשב "מידע בעל רגישות מיוחדת", גם אם אינו מפורט ברשימה. סימון קטגוריה זו מפעיל את קריטריון 1(3)(א), אך מומלץ לתעד את הנימוק הספציפי ולבצע אימות משפטי לתוקפו.'},
+  {id:'minors', title:'מידע על קטינים', sub:'מידע אישי הנוגע לקטינים', decisive:false,
+    detail:'מידע אישי הנוגע לקטינים (מתחת לגיל 18) — פרטי זיהוי, מידע חינוכי, רפואי או התנהגותי. אינו מוגדר כקטגוריה עצמאית בהגדרת "מידע בעל רגישות מיוחדת" שאותרה (גם לאחר תיקון 13), ולכן אינו מפעיל לבדו את הרמה הבינונית בכלי זה — אלא אם המידע על הקטין נופל בעצמו לאחת הקטגוריות שלעיל (למשל מידע רפואי). מוצג כאן לצורך מיפוי ותיעוד בלבד.'}
+];
+
+let state = {
+  step:1,
+  ownerType:'',
+  infoTypesSelected:{}, noSensitive:false, transferBusiness:'',
+  subjectsExact:null,
+  authExact:null
+};
+
+const TOTAL_STEPS = 4;
+const STAGE_LABELS = ['בעל המאגר','סוגי מידע','היקף המאגר','בעלי הרשאה'];
+let helpSeq = 0;
+
+function App(){}
+App.start = function(){
+  document.getElementById('screen-intro').style.display='none';
+  document.getElementById('screen-questions').style.display='block';
+  render();
+};
+App.loadDemo = function(){
+  state = {
+    step:1,
+    ownerType:'company',
+    infoTypesSelected:{salary_financial:true},
+    noSensitive:false, transferBusiness:'no',
+    subjectsExact:5000,
+    authExact:50
+  };
+  App.start();
+};
+App.reset = function(){
+  if(!confirm('לאפס את הסימולציה ולמחוק את כל התשובות שהוזנו?')) return;
+  state = {step:1, ownerType:'', infoTypesSelected:{}, noSensitive:false, transferBusiness:'', subjectsExact:null, authExact:null};
+  document.getElementById('screen-result').style.display='none';
+  document.getElementById('screen-report').classList.remove('show');
+  document.getElementById('screen-questions').style.display='none';
+  document.getElementById('screen-intro').style.display='block';
+};
+App.next = function(){
+  const err = validateStep(state.step);
+  if(err){ showStepError(err); return; }
+  if(state.step < TOTAL_STEPS){ state.step++; render(); }
+  else { showResult(); }
+};
+App.prev = function(){
+  if(state.step>1){ state.step--; render(); }
+  else { document.getElementById('screen-questions').style.display='none'; document.getElementById('screen-intro').style.display='block'; }
+};
+App.edit = function(){
+  document.getElementById('screen-result').style.display='none';
+  document.getElementById('screen-report').classList.remove('show');
+  document.getElementById('screen-questions').style.display='block';
+  state.step=1; render();
+};
+App.showReport = function(){
+  document.getElementById('screen-result').style.display='none';
+  renderReport();
+  document.getElementById('screen-report').classList.add('show');
+  window.scrollTo(0,0);
+};
+App.backFromReport = function(){
+  document.getElementById('screen-report').classList.remove('show');
+  document.getElementById('screen-result').style.display='block';
+};
+App.printReport = function(){
+  try{
+    window.print();
+  } catch(e){
+    App.openReportTab(true);
+  }
+};
+App.openReportTab = function(forPrint){
+  const reportHtml = document.getElementById('screen-report').innerHTML;
+  const styleTag = document.querySelector('style');
+  const styles = styleTag ? styleTag.textContent : '';
+  const w = window.open('', '_blank');
+  if(!w){
+    alert('הדפדפן חסם פתיחת כרטיסייה חדשה. יש לאפשר חלונות קופצים לאתר זה, או לפתוח את הקובץ ישירות בדפדפן (מחוץ לתצוגה המוטמעת) ולנסות שוב.');
+    return;
+  }
+  const doc = '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"><title>דוח סיווג מאגר מידע</title><style>'
+    + styles
+    + '</style></head><body><div class="app" style="max-width:720px;margin:0 auto;padding:20px;">'
+    + reportHtml
+    + '</div></body></html>';
+  w.document.open();
+  w.document.write(doc);
+  w.document.close();
+  if(forPrint){
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 350);
+  }
+};
+
+function setSel(field, val, evt){
+  state[field] = val;
+  document.querySelectorAll('[data-group="'+field+'"] .opt-row').forEach(el=>el.classList.remove('selected'));
+  if(evt){ const row = evt.target.closest('.opt-row'); if(row) row.classList.add('selected'); }
+  hideStepError();
+}
+function toggleInfoType(id){
+  state.infoTypesSelected[id] = !state.infoTypesSelected[id];
+  if(state.infoTypesSelected[id]) state.noSensitive = false;
+  const ck = document.getElementById('noSensitiveCk');
+  if(ck) ck.checked = state.noSensitive;
+  hideStepError();
+}
+function toggleNoSensitive(){
+  state.noSensitive = !state.noSensitive;
+  if(state.noSensitive){ state.infoTypesSelected = {}; render(); }
+  hideStepError();
+}
+function toggleHelp(evt, id){
+  evt.preventDefault();
+  evt.stopPropagation();
+  const panel = document.getElementById(id);
+  const btn = evt.currentTarget;
+  const willShow = !panel.classList.contains('show');
+  panel.classList.toggle('show', willShow);
+  btn.setAttribute('aria-expanded', willShow ? 'true':'false');
+}
+
+function decisiveSelectedSensitive(){ return SENSITIVE_TYPES.filter(t=>t.decisive && state.infoTypesSelected[t.id]); }
+function anySelectedSensitive(){ return decisiveSelectedSensitive().length>0; }
+function sensitiveListText(){ return decisiveSelectedSensitive().map(t=>t.title).join('، '); }
+function allSelectedInfoTypesText(){
+  const sel = SENSITIVE_TYPES.filter(t=>state.infoTypesSelected[t.id]).map(t=>t.title);
+  return sel.length ? sel.join(', ') : (state.noSensitive?'אין מידע רגיש':'לא הוזן');
+}
+function hasConfidentialInfo(){ return !!state.infoTypesSelected['confidential']; }
+
+function showStepError(msg){
+  let box = document.getElementById('step-error');
+  if(!box){
+    box = document.createElement('div');
+    box.id='step-error'; box.className='error-box';
+    document.getElementById('stage-container').appendChild(box);
+  }
+  box.textContent = msg;
+}
+function hideStepError(){
+  const box = document.getElementById('step-error');
+  if(box) box.remove();
+}
+
+function validateStep(step){
+  if(step===1){
+    if(!state.ownerType) return 'נדרש לבחור מי בעל המאגר לפני המשך.';
+  }
+  if(step===2){
+    if(!state.noSensitive && !Object.values(state.infoTypesSelected).some(v=>v)) {
+      return 'יש לבחור לפחות סוג מידע אחד, או לסמן שהמאגר אינו כולל מידע בעל רגישות מיוחדת.';
+    }
+    if(!state.transferBusiness) return 'נדרש לענות האם מטרת המאגר העיקרית היא מסירת מידע לאחר כדרך עיסוק.';
+  }
+  if(step===3){
+    if(state.subjectsExact===null || state.subjectsExact===''){ return 'נדרש להזין את מספר נושאי המידע במאגר (ניתן להזין 0).'; }
+    if(Number(state.subjectsExact) < 0) return 'מספר נושאי המידע אינו יכול להיות שלילי.';
+  }
+  if(step===4){
+    if(state.authExact===null || state.authExact===''){ return 'נדרש להזין את מספר בעלי ההרשאה למאגר (ניתן להזין 0).'; }
+    if(Number(state.authExact) < 0) return 'מספר בעלי ההרשאה אינו יכול להיות שלילי.';
+  }
+  return null;
+}
+
+function render(){
+  hideStepError();
+  const track = document.getElementById('progress-track');
+  track.innerHTML = STAGE_LABELS.map((lbl,i)=>{
+    const n=i+1;
+    const cls = n<state.step?'done':(n===state.step?'current':'');
+    return `<div class="p-node ${cls}"><div class="p-dot"></div><span>${lbl}</span></div>`;
+  }).join('');
+
+  document.getElementById('btn-prev').textContent = state.step===1 ? 'חזרה לפתיחה' : 'הקודם';
+  document.getElementById('btn-next').textContent = state.step===TOTAL_STEPS ? 'הצג תוצאה' : 'הבא';
+
+  document.getElementById('stage-container').innerHTML = renderStage(state.step);
+}
+
+function renderStage(step){
+  if(step===1) return stage1();
+  if(step===2) return stage2();
+  if(step===3) return stage3();
+  if(step===4) return stage4();
+  return '';
+}
+
+function optGroup(field, options){
+  return `<div data-group="${field}">` + options.map(o=>{
+    helpSeq++;
+    const hid = 'help-'+field+'-'+helpSeq;
+    const selected = state[field]===o.v;
+    return `
+    <div class="opt-row-wrap">
+      <div class="opt-row ${selected?'selected':''}">
+        <button type="button" class="opt-select" onclick="setSel('${field}','${o.v}',event)">${o.t}</button>
+        <button type="button" class="help-btn" aria-expanded="false" aria-label="הסבר מורחב" onclick="toggleHelp(event,'${hid}')">?</button>
+      </div>
+      <div class="help-panel" id="${hid}">${o.detail}</div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+function stage1(){
+  return `
+  <div class="stage">
+    <div class="stage-title">שלב 1 מתוך ${TOTAL_STEPS}</div>
+    <h2>בעל המאגר</h2>
+    <div class="stage-desc">קריטריון מסווג עצמאי: בעלות של גוף ציבורי מטה מאגר לרמת אבטחה בינונית לפחות; בעלות של יחיד עשויה להקנות פטור חלקי.</div>
+    <div class="q">
+      <div class="q-label q-required">מי בעל המאגר?</div>
+      ${optGroup('ownerType', OWNER_OPTIONS)}
+    </div>
+  </div>`;
+}
+
+function stage2(){
+  const rows = SENSITIVE_TYPES.map(t=>{
+    helpSeq++;
+    const hid = 'chelp-'+t.id+'-'+helpSeq;
+    return `
+    <div class="check-row">
+      <input type="checkbox" id="ck-${t.id}" ${state.infoTypesSelected[t.id]?'checked':''} onchange="toggleInfoType('${t.id}')">
+      <label class="ct-body" for="ck-${t.id}"><span class="ct-title">${t.title}</span><span class="ct-sub">${t.sub}</span></label>
+      <button type="button" class="help-btn" aria-expanded="false" aria-label="הסבר מורחב" onclick="toggleHelp(event,'${hid}')">?</button>
+    </div>
+    <div class="check-help-panel" id="${hid}">${t.detail}</div>`;
+  }).join('');
+  return `
+  <div class="stage">
+    <div class="stage-title">שלב 2 מתוך ${TOTAL_STEPS}</div>
+    <h2>סוגי מידע</h2>
+    <div class="stage-desc">קיומו של "מידע בעל רגישות מיוחדת" (כהגדרתו בסעיף 3 לחוק, לאחר תיקון 13), או מטרת מסירה לאחר, מטים את המאגר לרמת אבטחה בינונית לפחות (תוספת ראשונה).</div>
+
+    <div class="q">
+      <div class="q-label q-required">סוגי "מידע בעל רגישות מיוחדת" הקיימים במאגר</div>
+      <div class="checks">${rows}</div>
+      <label class="check-row" style="margin-top:8px;border-top:2px solid var(--line-strong)">
+        <input type="checkbox" id="noSensitiveCk" ${state.noSensitive?'checked':''} onchange="toggleNoSensitive()">
+        <span><span class="ct-title">המאגר אינו כולל אף אחד מסוגי המידע הרגיש שלעיל</span></span>
+      </label>
+    </div>
+
+    <div class="q">
+      <div class="q-label q-required">האם מטרת המאגר העיקרית היא איסוף מידע לצורך מסירתו לאחר כדרך עיסוק (לרבות שירותי דיוור ישיר)?</div>
+      ${optGroup('transferBusiness', TRANSFER_OPTIONS)}
+    </div>
+  </div>`;
+}
+
+function stage3(){
+  return `
+  <div class="stage">
+    <div class="stage-title">שלב 3 מתוך ${TOTAL_STEPS}</div>
+    <h2>היקף המאגר</h2>
+    <div class="stage-desc">משמש להשוואה מול סף 100,000 נושאי מידע הקבוע בתוספת השנייה.</div>
+    <div class="q">
+      <div class="q-label q-required">כמה נושאי מידע (בני אדם) קיימים במאגר?</div>
+      <input type="number" min="0" step="1" placeholder="לדוגמה: 5000" value="${state.subjectsExact===null?'':state.subjectsExact}" oninput="state.subjectsExact=this.value===''?null:Number(this.value)">
+      <div class="hint-box">טווח: ${scopeLabel(state.subjectsExact)}</div>
+    </div>
+  </div>`;
+}
+function scopeLabel(n){
+  if(n===null || n==='' || isNaN(n)) return 'טרם הוזן';
+  n=Number(n);
+  if(n<=100) return 'עד 100';
+  if(n<=1000) return '101–1,000';
+  if(n<=10000) return '1,001–10,000';
+  if(n<100000) return '10,001–100,000';
+  return 'מעל 100,000';
+}
+
+function stage4(){
+  return `
+  <div class="stage">
+    <div class="stage-title">שלב 4 מתוך ${TOTAL_STEPS}</div>
+    <h2>בעלי הרשאה</h2>
+    <div class="stage-desc">משמש להשוואה מול סף 100 בעלי הרשאה הקבוע בתוספת השנייה, ולבחינת פטור "מאגר המנוהל בידי יחיד".</div>
+    <div class="q">
+      <div class="q-label q-required">כמה בעלי הרשאה ניגשים למאגר?</div>
+      <input type="number" min="0" step="1" placeholder="לדוגמה: 50" value="${state.authExact===null?'':state.authExact}" oninput="state.authExact=this.value===''?null:Number(this.value)">
+      <div class="hint-box">טווח: ${authLabel(state.authExact)}</div>
+    </div>
+  </div>`;
+}
+function authLabel(n){
+  if(n===null || n==='' || isNaN(n)) return 'טרם הוזן';
+  n=Number(n);
+  if(n<=10) return 'עד 10';
+  if(n<=50) return '11–50';
+  if(n<=100) return '51–100';
+  return 'מעל 100';
+}
+
+function classify(){
+  const missing = [];
+  if(!state.ownerType) missing.push({item:'בעל המאגר', reason:'נדרש לדעת אם המאגר בבעלות יחיד, חברה פרטית או גוף ציבורי, שכן לכך השפעה ישירה על הסיווג (תוספת ראשונה, פרט 1(4)).'});
+  if(!state.transferBusiness) missing.push({item:'מטרת המאגר — מסירת מידע לאחר', reason:'קריטריון עצמאי וקובע (תוספת ראשונה, פרט 1(1)) שלא נענה.'});
+  if(!state.noSensitive && !anySelectedSensitive() && Object.keys(state.infoTypesSelected).length===0) missing.push({item:'סוגי המידע במאגר', reason:'לא ניתן לבחון קיום "מידע בעל רגישות מיוחדת" (תוספת ראשונה, פרט 1(3)(א)) ללא מיפוי סוגי המידע.'});
+  if(state.subjectsExact===null) missing.push({item:'מספר נושאי המידע', reason:'נדרש להשוואה מול סף 100,000 הקבוע בתוספת השנייה.'});
+  if(state.authExact===null) missing.push({item:'מספר בעלי ההרשאה', reason:'נדרש להשוואה מול סף 100 הקבוע בתוספת השנייה.'});
+
+  if(missing.length>0) return {final:false, missing};
+
+  const ownerPublic = state.ownerType==='public';
+  const ownerIndividual = state.ownerType==='individual';
+  const sensitive = anySelectedSensitive();
+  const transferPurpose = state.transferBusiness==='yes';
+  const confidential = hasConfidentialInfo();
+  const subjects = Number(state.subjectsExact);
+  const authCount = Number(state.authExact);
+
+  const individualManaged = ownerIndividual && authCount<=3 && !transferPurpose && !confidential;
+
+  const factors = [
+    {factor:'בעל המאגר', answer: ownerLabelText(state.ownerType), effect: ownerPublic?'strict':'neutral', note: ownerPublic?LEGAL.add1_4:null},
+    {factor:'מטרה — מסירת מידע לאחר כדרך עיסוק', answer: transferPurpose?'כן':'לא', effect: transferPurpose?'strict':'neutral', note: transferPurpose?LEGAL.add1_1:null},
+    {factor:'מידע בעל רגישות מיוחדת (קריטריונים עצמאיים)', answer: sensitive? sensitiveListText() : 'אין מידע מהסוגים המסווגים', effect: sensitive?'strict':'neutral', note: sensitive?LEGAL.add1_3:null},
+    {factor:'מספר נושאי מידע', answer: subjects.toLocaleString('he-IL'), effect: subjects>=100000?'strict':'neutral', note: subjects>=100000?LEGAL.add2:null},
+    {factor:'מספר בעלי הרשאה', answer: authCount.toLocaleString('he-IL'), effect: authCount>100?'strict':'neutral', note: authCount>100?LEGAL.add2:null}
+  ];
+
+  if(individualManaged){
+    return {
+      final:true, level:'exempt', confidence:'גבוהה', factors,
+      decider:'המאגר מנוהל בידי יחיד (או תאגיד בבעלותו), עם עד שלושה בעלי הרשאה בסך הכל, אינו משמש למסירת מידע לאחר כדרך עיסוק, ואינו כולל מידע הכפוף לחובת סודיות מקצועית — ולכן חלה עליו הגדרת "מאגר המנוהל בידי יחיד", הכפופה לחובות המצומצמות ביותר בתקנות.',
+      deciderCite: LEGAL.indiv
+    };
+  }
+
+  const mediumTrigger = transferPurpose || ownerPublic || sensitive;
+  const highTrigger = (transferPurpose || sensitive) && (subjects>=100000 || authCount>100);
+
+  let level, decider, deciderCite, confidence='גבוהה';
+
+  if(highTrigger){
+    level='high';
+    if(subjects>=100000 && authCount>100){
+      decider = 'המאגר עונה על אחד מסוגי המידע הקבועים בתוספת השנייה (מסירת מידע לאחר או מידע בעל רגישות מיוחדת), ובנוסף מכיל מידע על 100,000 נושאי מידע ומעלה וגם מספר בעלי ההרשאה בו עולה על 100 — שני התנאים הכמותיים החלופיים בתוספת השנייה מתקיימים בו זמנית.';
+    } else if(subjects>=100000){
+      decider = 'המאגר עונה על אחד מסוגי המידע הקבועים בתוספת השנייה, ומכיל מידע על 100,000 נושאי מידע ומעלה — התנאי הכמותי הראשון בתוספת השנייה.';
+    } else {
+      decider = 'המאגר עונה על אחד מסוגי המידע הקבועים בתוספת השנייה, ומספר בעלי ההרשאה בו עולה על 100 — התנאי הכמותי השני בתוספת השנייה.';
+    }
+    deciderCite = LEGAL.add2;
+  } else if(mediumTrigger){
+    level='medium';
+    if(ownerPublic && !transferPurpose && !sensitive){
+      decider = 'המאגר בבעלות גוף ציבורי, ואינו עונה על סוגי המידע שבפרטים 1(1) או 1(3) לתוספת הראשונה — ולכן אינו יכול להגיע לרמה הגבוהה מכוח היקפו בלבד, גם אם הוא גדול או נגיש לבעלי הרשאה רבים.';
+      deciderCite = LEGAL.add1_4;
+    } else if(transferPurpose){
+      decider = 'מטרתו העיקרית של המאגר היא איסוף מידע לצורך מסירתו לאחר כדרך עיסוק — קריטריון עצמאי המטה את הסיווג לרמה הבינונית לפחות.';
+      deciderCite = LEGAL.add1_1;
+    } else {
+      decider = 'המאגר כולל סוג מידע רגיש עצמאי אחד או יותר המנוי בתוספת הראשונה — קריטריון עצמאי המטה את הסיווג לרמה הבינונית לפחות.';
+      deciderCite = LEGAL.add1_3;
+    }
+  } else {
+    level='basic';
+    decider = 'המאגר אינו נכלל באף אחד מסוגי המידע המנויים בתוספת הראשונה (אינו משמש למסירת מידע לאחר כדרך עיסוק, אינו בבעלות גוף ציבורי, ואינו כולל מידע רגיש עצמאי מהסוגים שנבדקו) — ולכן חלה עליו רמת האבטחה הבסיסית, כברירת מחדל.';
+    deciderCite = LEGAL.reg1;
+  }
+
+  if((subjects>90000 && subjects<100000) || (authCount>90 && authCount<=100)) confidence='בינונית';
+
+  return {final:true, level, confidence, factors, decider, deciderCite};
+}
+
+function ownerLabelText(v){ return {individual:'יחיד / תאגיד בבעלות יחיד', company:'חברה / גוף פרטי', public:'גוף ציבורי'}[v]||'לא הוזן'; }
+function levelMeta(level){
+  return {
+    basic:{label:'בסיסית', cls:'basic'},
+    medium:{label:'בינונית', cls:'medium'},
+    high:{label:'גבוהה', cls:'high'},
+    exempt:{label:'מאגר המנוהל בידי יחיד', cls:'exempt'}
+  }[level];
+}
+
+function showResult(){
+  const res = classify();
+  document.getElementById('screen-questions').style.display='none';
+  const el = document.getElementById('screen-result');
+  el.style.display='block';
+  window.scrollTo(0,0);
+
+  if(!res.final){
+    el.innerHTML = `
+      <div class="stage-title">תוצאת הסימולציה</div>
+      <h2 style="font-size:26px;">לא ניתן לקבוע סיווג סופי</h2>
+      <div class="missing-box">
+        <h3>המידע שחסר</h3>
+        <ol>${res.missing.map(m=>`<li><b>${m.item}</b><span>${m.reason}</span></li>`).join('')}</ol>
+      </div>
+      <div class="result-actions no-print">
+        <button class="btn" onclick="App.edit()">חזרה למילוי החסר</button>
+      </div>`;
+    return;
+  }
+
+  const meta = levelMeta(res.level);
+  el.innerHTML = `
+    <div class="stage-title">תוצאת הסימולציה</div>
+    <span class="result-badge badge-${meta.cls}">רמת האבטחה הנדרשת</span>
+    <div class="result-level level-${meta.cls}">${meta.label}</div>
+    <div class="confidence-row">רמת ודאות הסיווג: <b>${res.confidence}</b></div>
+
+    <div class="section-divider"><h3>מדוע נקבע הסיווג?</h3></div>
+    <table class="reason-tbl">
+      <thead><tr><th>גורם</th><th>תשובת המשתמש</th><th>השפעה על הסיווג</th></tr></thead>
+      <tbody>
+        ${res.factors.map(f=>`<tr><td>${f.factor}</td><td>${f.answer}</td><td><span class="effect-tag effect-${f.effect==='strict'?'strict':'neutral'}">${f.effect==='strict'?'מחמיר':'ללא השפעה מחמירה'}</span></td></tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="decider-box">
+      <div class="lbl">הקריטריון שהכריע את הסיווג</div>
+      <p>${res.decider}</p>
+      <div class="legal-cite"><b>מקור משפטי: </b>${res.deciderCite}</div>
+    </div>
+
+    <div class="result-actions no-print">
+      <button class="btn" onclick="App.showReport()">הפק דוח סיווג</button>
+      <button class="btn secondary" onclick="App.edit()">חזרה לעריכת התשובות</button>
+      <button class="btn ghost danger-ghost" onclick="App.reset()">אפס סימולציה</button>
+    </div>
+  `;
+}
+
+function renderReport(){
+  const res = classify();
+  const el = document.getElementById('screen-report');
+  const dt = new Date().toLocaleDateString('he-IL');
+  const infoTypesText = allSelectedInfoTypesText();
+
+  let levelSectionHtml;
+  if(!res.final){
+    levelSectionHtml = `
+      <div class="rsec">
+        <h4>6. רמת האבטחה שנקבעה</h4>
+        <p><b>לא ניתן לקבוע סיווג סופי</b> — נדרש להשלים מידע חסר.</p>
+        <ul>${res.missing.map(m=>`<li><b>${m.item}:</b> ${m.reason}</li>`).join('')}</ul>
+      </div>`;
+  } else {
+    const meta = levelMeta(res.level);
+    levelSectionHtml = `
+      <div class="rsec">
+        <h4>6. רמת האבטחה שנקבעה</h4>
+        <p style="font-size:20px;font-weight:700;">${meta.label} <span style="font-size:13px;font-weight:400;color:var(--ink-soft)">(רמת ודאות: ${res.confidence})</span></p>
+      </div>
+      <div class="rsec">
+        <h4>7. הנימוקים</h4>
+        <table class="reason-tbl">
+          <thead><tr><th>גורם</th><th>תשובה</th><th>השפעה</th></tr></thead>
+          <tbody>${res.factors.map(f=>`<tr><td>${f.factor}</td><td>${f.answer}</td><td>${f.effect==='strict'?'מחמיר':'ללא השפעה מחמירה'}</td></tr>`).join('')}</tbody>
+        </table>
+        <p><b>הקריטריון המכריע:</b> ${res.decider}</p>
+        <p class="legal-cite"><b>מקור משפטי:</b> ${res.deciderCite}</p>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="no-print" style="margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn secondary" onclick="App.backFromReport()">חזרה לתוצאות</button>
+      <button class="btn" onclick="App.printReport()">הדפסה / שמירה כ-PDF</button>
+      <button class="btn ghost" onclick="App.openReportTab(false)">פתח את הדוח בכרטיסייה נפרדת</button>
+    </div>
+    <div class="no-print" style="font-size:12.5px;color:var(--ink-soft);margin-bottom:20px;">
+      אם ההדפסה אינה נפתחת (למשל בתצוגה מוטמעת בתוך אפליקציה אחרת), השתמשו בכפתור "פתח את הדוח בכרטיסייה נפרדת" ולאחר מכן הדפיסו/שמרו כ-PDF משם באמצעות Ctrl+P (או Cmd+P במק).
+    </div>
+    <h2>דוח סיווג מאגר מידע</h2>
+    <div class="report-sub">הופק על ידי סימולטור סיווג מאגר מידע · ${dt}</div>
+
+    <div class="rsec"><h4>1. בעל המאגר</h4><p>${ownerLabelText(state.ownerType)}</p></div>
+    <div class="rsec"><h4>2. סוגי המידע</h4><p>${infoTypesText}</p><p><b>מטרה עיקרית — מסירת מידע לאחר כדרך עיסוק:</b> ${state.transferBusiness==='yes'?'כן':state.transferBusiness==='no'?'לא':'לא הוזן'}</p></div>
+    <div class="rsec"><h4>3. היקף נושאי המידע</h4><p>${state.subjectsExact!==null?Number(state.subjectsExact).toLocaleString('he-IL')+' נושאי מידע':'לא הוזן'}</p></div>
+    <div class="rsec"><h4>4. בעלי הרשאה</h4><p>${state.authExact!==null?Number(state.authExact).toLocaleString('he-IL'):'לא הוזן'}</p></div>
+    <div class="rsec"><h4>5. הקריטריונים שנבדקו</h4>
+      <ul>
+        <li>${LEGAL.reg1}</li>
+        <li>${LEGAL.add1_1}</li>
+        <li>${LEGAL.add1_3}</li>
+        <li>${LEGAL.add1_4}</li>
+        <li>${LEGAL.add2}</li>
+        <li>${LEGAL.indiv}</li>
+      </ul>
+    </div>
+    ${levelSectionHtml}
+    <div class="rsec"><h4>8. מסקנת ביקורת</h4>
+      <p>${res.final ? `בהתאם לנתונים שנמסרו, המאגר הנבדק עומד בקריטריונים לרמת אבטחה "${levelMeta(res.level).label}" לפי תקנות הגנת הפרטיות (אבטחת מידע), התשע"ז-2017. ממצא זה טעון אימות מול מסמך הגדרות המאגר בפועל ומול היועץ המשפטי של הארגון.` : 'לא ניתן לגבש מסקנת ביקורת סופית עד להשלמת המידע החסר המפורט לעיל.'}</p>
+    </div>
+    <div class="rsec"><h4>9. המלצות</h4>
+      <ul>
+        <li>לעדכן ולתחזק מסמך הגדרות מאגר בהתאם לתקנה 2 לתקנות.</li>
+        <li>לוודא כי נוהל האבטחה, ניהול ההרשאות ותיעוד האירועים תואמים את רמת האבטחה שנקבעה.</li>
+        ${res.final && res.level!=='basic' && res.level!=='exempt' ? '<li>לוודא קיום ביקורת תקופתית אחת ל-24 חודשים לפחות, בהתאם לתקנה 16.</li>' : ''}
+        ${res.final && res.level==='high' ? '<li>לוודא ביצוע סקר סיכונים ומבדקי חדירות בהתאם לדרישות רמת האבטחה הגבוהה.</li>' : ''}
+        <li>לבצע אימות משפטי לממצאי הסימולטור מול היועץ המשפטי, ובפרט ביחס להשפעות תיקון 13 לחוק הגנת הפרטיות ככל שרלוונטי.</li>
+      </ul>
+    </div>
+    <div class="disclaimer">
+      דוח זה הופק באמצעות סימולטור תומך-החלטה ואינו מהווה חוות דעת משפטית. הנוסח המחייב הוא נוסח התקנות כפי שפורסם ברשומות.
+      <p style="color:var(--danger);font-weight:700;margin-top:10px;">אין להסתמך על מחשבון זה בלי לקבל ייעוץ משפטי פרטני. לשאלת הגדרת מאגר המידע עשויים להיות השלכות משפטיות משמעותיות, לרבות קנסות במיליוני שקלים.</p>
+    </div>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>
